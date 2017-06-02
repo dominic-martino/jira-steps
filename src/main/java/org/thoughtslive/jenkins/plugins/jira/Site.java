@@ -3,6 +3,8 @@ package org.thoughtslive.jenkins.plugins.jira;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 
@@ -16,7 +18,9 @@ import hudson.Extension;
 import hudson.Util;
 import hudson.model.AbstractDescribableImpl;
 import hudson.model.Descriptor;
+import hudson.util.CopyOnWriteList;
 import hudson.util.FormValidation;
+import hudson.util.ListBoxModel;
 import hudson.util.Secret;
 import lombok.Getter;
 import lombok.Setter;
@@ -29,10 +33,17 @@ import lombok.extern.java.Log;
  */
 @Log
 public class Site extends AbstractDescribableImpl<Site> {
-
+	
 	public enum LoginType {
 		BASIC, OAUTH
 	}
+
+	public enum ValidationBehavior {
+		MANDITORY, OPTIONAL
+	}
+	
+	@Getter
+	private final List<JiraField> fields = new ArrayList<JiraField>();
 
 	@Getter
 	private final String name;
@@ -43,19 +54,22 @@ public class Site extends AbstractDescribableImpl<Site> {
 	@Getter
 	private int timeout;
 
+	@Getter
+	private ValidationBehavior defaultBehavior;
+
 	// Basic
 	@Getter
-	@Setter(onMethod = @__({@DataBoundSetter}))
+	@Setter(onMethod = @__({ @DataBoundSetter }))
 	private String userName;
 	@Getter
 	private Secret password;
 
 	// OAuth
 	@Getter
-	@Setter(onMethod = @__({@DataBoundSetter}))
+	@Setter(onMethod = @__({ @DataBoundSetter }))
 	private String consumerKey;
 	@Getter
-	@Setter(onMethod = @__({@DataBoundSetter}))
+	@Setter(onMethod = @__({ @DataBoundSetter }))
 	private String privateKey;
 	@Getter
 	private Secret secret;
@@ -117,10 +131,13 @@ public class Site extends AbstractDescribableImpl<Site> {
 		}
 
 		/**
-		 * Checks if the details required for the basic login is valid. TODO: This validation can be moved to Config so that we can also verify the name is valid.
+		 * Checks if the details required for the basic login is valid. TODO:
+		 * This validation can be moved to Config so that we can also verify the
+		 * name is valid.
 		 */
-		public FormValidation doValidateBasic(@QueryParameter String name, @QueryParameter String url, @QueryParameter String loginType, @QueryParameter String timeout,
-				@QueryParameter String userName, @QueryParameter String password, @QueryParameter String consumerKey, @QueryParameter String privateKey,
+		public FormValidation doValidateBasic(@QueryParameter String name, @QueryParameter String url,
+				@QueryParameter String loginType, @QueryParameter String timeout, @QueryParameter String userName,
+				@QueryParameter String password, @QueryParameter String consumerKey, @QueryParameter String privateKey,
 				@QueryParameter String secret, @QueryParameter String token) throws IOException {
 			url = Util.fixEmpty(url);
 			name = Util.fixEmpty(name);
@@ -166,7 +183,8 @@ public class Site extends AbstractDescribableImpl<Site> {
 				final JiraService service = new JiraService(site);
 				final ResponseData<Map<String, Object>> response = service.getServerInfo();
 				if (response.isSuccessful()) {
-					return FormValidation.ok("Success: " + response.getData().get("serverTitle") + " - " + response.getData().get("version"));
+					return FormValidation.ok("Success: " + response.getData().get("serverTitle") + " - "
+							+ response.getData().get("version"));
 				} else {
 					return FormValidation.error(response.getError());
 				}
@@ -178,8 +196,9 @@ public class Site extends AbstractDescribableImpl<Site> {
 
 		// This is stupid but no choice as I couldn't find the way to get the
 		// value loginType (radioBlock as a @QueryParameter)
-		public FormValidation doValidateOAuth(@QueryParameter String name, @QueryParameter String url, @QueryParameter String loginType, @QueryParameter String timeout,
-				@QueryParameter String userName, @QueryParameter String password, @QueryParameter String consumerKey, @QueryParameter String privateKey,
+		public FormValidation doValidateOAuth(@QueryParameter String name, @QueryParameter String url,
+				@QueryParameter String loginType, @QueryParameter String timeout, @QueryParameter String userName,
+				@QueryParameter String password, @QueryParameter String consumerKey, @QueryParameter String privateKey,
 				@QueryParameter String secret, @QueryParameter String token) throws IOException {
 			url = Util.fixEmpty(url);
 			name = Util.fixEmpty(name);
@@ -235,7 +254,8 @@ public class Site extends AbstractDescribableImpl<Site> {
 				final JiraService service = new JiraService(site);
 				final ResponseData<Map<String, Object>> response = service.getServerInfo();
 				if (response.isSuccessful()) {
-					return FormValidation.ok("Success: " + response.getData().get("serverTitle") + " - " + response.getData().get("version"));
+					return FormValidation.ok("Success: " + response.getData().get("serverTitle") + " - "
+							+ response.getData().get("version"));
 				} else {
 					return FormValidation.error(response.getError());
 				}
@@ -243,6 +263,14 @@ public class Site extends AbstractDescribableImpl<Site> {
 				log.log(Level.WARNING, "Failed to OAuth login to JIRA at " + url, e);
 			}
 			return FormValidation.error("Failed to OAuth login to JIRA: " + url);
+		}
+
+		public ListBoxModel doFillDefaultBehaviorItems() {
+			ListBoxModel items = new ListBoxModel();
+			for (ValidationBehavior behavior : ValidationBehavior.values()) {
+				items.add(behavior.toString(), behavior.toString());
+			}
+			return items;
 		}
 	}
 }

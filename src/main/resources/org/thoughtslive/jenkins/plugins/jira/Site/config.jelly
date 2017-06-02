@@ -53,6 +53,16 @@
       </f:nested>
     </f:radioBlock>
   </f:section>  
+  <f:section title="Configure JIRA fields:">  	
+		<f:entry title="Default field validation behavior" field="defaultBehavior">
+		   <f:select />
+		</f:entry>
+		
+		<f:entry title="List of JIRA Fields">
+      		<f:repeatableProperty field="fields" add="Add field"/>
+    	</f:entry>
+		
+  </f:section>  
   <f:entry title="">
     <div align="right">
       <f:repeatableDeleteButton value="Delete Site"/>
